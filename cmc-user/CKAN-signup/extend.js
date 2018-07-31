@@ -2,7 +2,7 @@
  ############################################################################
  ############################### GPL III ####################################
  ############################################################################
- *                         Copyright 2017 CRS4                                 *
+ *                         Copyright 2018 CRS4                                *
  *       This file is part of CRS4 Microservice Core - User (CMC-User).       *
  *                                                                            *
  *       CMC-User is free software: you can redistribute it and/or modify     *
@@ -32,7 +32,7 @@ var plugins = [
         "enabled": true,
         "params": ["body","ckan_username"],
         "extender": {
-            'before': function (req, content, cType, callback) {
+            'before': function (req, content, cType, callback)  {
                 //checking all parameters have been set
                 var par = ["email", "password"];
                 var ko = false;
@@ -57,7 +57,7 @@ var plugins = [
                         name: name
                     };
                     var options = {
-                        url: 'http://seitre.crs4.it/api/3/action/user_create',
+                        url: 'http://156.148.14.147/api/3/action/user_create',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -65,13 +65,17 @@ var plugins = [
                     };
                     //making actual request to CKAN for user creation
                     request.post(options, function (err,res,cBody) {
-                        var b = JSON.parse(cBody);
-                        if (b.result && b.result.apikey) {
-                            req.body.user.ckan_apikey = b.result.apikey; //setting CKAN apikey to user dictionary
-                            req.ckan_username = name;   //appending CKAN username to request, to be used in AFTER section
-                            callback(err, req);
+                        try {
+                            var b = JSON.parse(cBody);
+                            if (b.result && b.result.apikey) {
+                                req.body.user.ckan_apikey = b.result.apikey; //setting CKAN apikey to user dictionary
+                                req.ckan_username = name;   //appending CKAN username to request, to be used in AFTER section
+                                callback(err, req);
+                            }
+                            else callback({error_code: 400, error_message: b.error});
+                        } catch (ex) {
+                            callback({error_code:500, error_message: ex});
                         }
-                        else callback({error_code: 400, error_message: b.error});
                     });
                 }
             },
@@ -80,7 +84,7 @@ var plugins = [
                 var request = require("request");
                 if (content.error) {
                     var options = {
-                        url: 'http://seitre.crs4.it/api/3/action/user_delete',
+                        url: 'http://156.148.14.147/api/3/action/user_delete',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': '9e15a233-30ea-4676-a70e-6cc70477c85e'
@@ -92,8 +96,10 @@ var plugins = [
                     });
                 }
                 else {
-                    content.created_resource.ckan_username = req.ckan_username; //set here because it is not saved in the DB
-                    callback(null, content);
+                    if (content.created_resource) {
+                         content.created_resource.ckan_username = req.ckan_username; //set here because it is not saved in the DB
+                         callback(null, content);
+                    }
                 }
             }
         }
@@ -125,5 +131,3 @@ var plugins = [
         }
     }
 ];
-
-module.exports = plugins;
